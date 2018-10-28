@@ -43,6 +43,9 @@ if (!all(required_columns %in% str_to_lower(columns))){
 # Extract all pasqi* columns, ie all columns that have 'psqi' in their name
 columns <- columns[str_detect(columns, "psqi")]
 
+# Clone original for later
+data.orig <- data.df
+
 ############################################################
 #                                                          #
 #                      Clean the Data                      #
@@ -57,6 +60,12 @@ for (column in columns){
       
       # Convert all text to lowercase in that cell to reduce permutations for string detection
       rowData <- str_to_lower(data.df[row, column])
+      
+      # Change 'midnight' to '12:00 AM'
+      if (rowData == "midnight"){
+        data.df[row, column] <- "12:00 AM"
+        next
+      }
       
       # Check if any digits present, if not, return NA
       if (!str_detect(rowData, "\\d")){
@@ -110,12 +119,6 @@ for (column in columns){
       if (str_detect(rowData, "/")){
         temp <- unlist(strsplit(rowData, "/"))
         data.df[row, column] <- mean(as.numeric(temp[1:2]))
-        next
-      }
-      
-      # Change 'midnight' to '12:00 AM'
-      if (rowData == "midnight"){
-        data.df[row, column] <- "12:00 AM"
         next
       }
       
@@ -177,7 +180,25 @@ for (column in columns){
     data.df[[column]] <- hms::parse_hm(data.df[[column]])
   } else {
     # If not a time column, parse as numeric data instead
-    data.df[[column]] <- as.numeric(data.df[[column]])
+    data.df[[column]] <- suppressWarnings(as.numeric(data.df[[column]]))
   }
 }
+
+############################################################
+#                                                          #
+#             Merge Cleaned and Uncleaned Data             #
+#                                                          #
+############################################################
+
+data.df <- data.df[,columns]
+colnames(data.df) <- paste0(colnames(data.df), ".clean")
+data.df <- cbind(data.orig, data.df)
+
+############################################################
+#                                                          #
+#                        Write CSV                         #
+#                                                          #
+############################################################
+
+write.csv(data.df, args[[2]], row.names = FALSE)
 
