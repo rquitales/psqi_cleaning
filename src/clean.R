@@ -26,12 +26,20 @@ columns <- columns[str_detect(columns, "psqi")]
 # check if dates in columns:
 for (column in columns){
   for (row in 1:nrow(data.df)){
-    if (!is.na(data.df[row, column])){
+    if (!is.na(data.df[row, column]) | data.df[row, column] != ""){
       # Convert all text to lowercase in that cell
       rowData <- str_to_lower(data.df[row, column])
+      # Check if any digits present, if not, return NA
+      if (!str_detect(rowData, "\\d")){
+        data.df[row, column] <- NA
+        next
+      }
       
       # Check if it is a time by detecting am or pm present
       if (str_detect(rowData, "am|pm|a.m|p.m")){
+        if (str_detect(rowData, "\\d{1,2}-\\d{1,2}")){
+          rowData <- paste0(str_extract(rowData, "(?<=-)\\d{1,2}"), " ", ifelse(str_detect(rowData, "am|a.m"), "am", "pm"))
+        }
         # Parse the date-time into HH:MM format
         if (str_detect(rowData, "\\d{1,2}[:;.,\\s]\\d{1,2}")){
           temp <- str_extract(rowData, "\\d{1,2}[:;.,\\s]\\d{1,2}")
@@ -43,13 +51,12 @@ for (column in columns){
           }
         } else {
           temp <- unlist(str_extract_all(rowData, "\\d"))
+          
           if (length(temp) == 3){
             data.df[row, column] <- paste0(temp[1], ":", temp[2], temp[3], " ", ifelse(str_detect(rowData, "am|a.m"), "AM", "PM"))
-          }
-          if (length(temp) == 4){
+          } else if (length(temp) == 4){
             data.df[row, column] <- paste0(temp[1], temp[2], ":", temp[3], temp[4], " ", ifelse(str_detect(rowData, "am|a.m"), "AM", "PM"))
-          } 
-          if (length(temp) == 2){
+          } else if (length(temp) == 2){
             data.df[row, column] <- paste0(temp[1], temp[2], ":", "00", " ", ifelse(str_detect(rowData, "am|a.m"), "AM", "PM"))
           } else {
             data.df[row, column] <- paste0(temp[1], ":", "00", " ", ifelse(str_detect(rowData, "am|a.m"), "AM", "PM"))
@@ -61,7 +68,7 @@ for (column in columns){
       # Convert a date (12-Oct) to a range and get the middle
       if (str_detect(rowData, "\\d{1,2}-\\D{3,4}")){
         temp <- unlist(strsplit(rowData, "-"))
-        temp[2] <- match(temp[2], month.abb)
+        temp[2] <- match(temp[2], str_to_lower(month.abb))
         data.df[row, column] <- mean(as.numeric(temp))
         next
       }
@@ -104,14 +111,35 @@ for (column in columns){
       if (str_detect(rowData, "\\d")){
         data.df[row, column] <- str_extract(rowData, "\\d{1,4}")
       }
-    } else{
+    } else {
       data.df[row, column] <- NA
     }
   }
 }
 
-
-View(data.frame(unique(data.df$psqi1), hms::parse_hm(unique(data.df$psqi1))))
-
-month.abb
+# Check if at least half of the entries in the column are times, then parse it as a time component
+for (column in columns){
+  if (sum(str_detect(data.df[[column]], "AM|PM"), na.rm = TRUE) > nrow(data.df) / 2){
+    for (row in 1:nrow(data.df)){
+      if (!is.na(data.df[row, column])){
+        if (!str_detect(data.df[row, column], "\\d{1,2}:\\d{1,2}\\s\\D{2}")){
+          temp <- unlist(str_extract_all(data.df[row, column], "\\d"))
+          
+          if (length(temp) == 3){
+            data.df[row, column] <- paste0(temp[1], ":", temp[2], temp[3])
+          } else if (length(temp) == 4){
+            data.df[row, column] <- paste0(temp[1], temp[2], ":", temp[3], temp[4])
+          } else if (length(temp) == 2){
+            data.df[row, column] <- paste0(temp[1], temp[2], ":", "00")
+          } else {
+            data.df[row, column] <- paste0(temp[1], ":", "00")
+          } 
+        }
+      }
+    }
+    data.df[[column]] <- hms::parse_hm(data.df[[column]])
+  } else {
+    data.df[[column]] <- as.numeric(data.df[[column]])
+  }
+}
 
