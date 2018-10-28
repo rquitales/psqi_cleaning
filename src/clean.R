@@ -1,57 +1,90 @@
-args <- commandArgs(trailingOnly = TRUE)
+############################################################
+#                                                          #
+#                    Argument Handling                     #
+#                                                          #
+############################################################
+#Get arguments
+args <- as.list(commandArgs(trailingOnly = TRUE))
 
+# If argument list is empty, have stdin as the input and stdout as output
 if (length(args) == 0) {
-  args[1] <- stdin()
+  args[[1]] <- stdin()
 }
 if (length(args) == 1) {
-  args[2] <- stdout()
+  args[[2]] <- stdout()
 }
 
-library(tidyverse)
+############################################################
+#                                                          #
+#                      Load Packages                       #
+#                                                          #
+############################################################
+library(stringr)
+library(hms)
 
-data.df <- read.csv("/home/rquitales/git/neuroscience/instructions/psqi_dirty.csv", stringsAsFactors = FALSE)
+############################################################
+#                                                          #
+#                  Load & Check CSV Input                  #
+#                                                          #
+############################################################
 
+# Read csv
+data.df <- read.csv(args[[1]], stringsAsFactors = FALSE)
+
+# Column names required to be in the CSV file
 required_columns <- c("id", "psqi1", "psqi2", "psqi3", "psqi4", "psqi5a")
-columns <- colnames(data.df)
 
+# Check if the required columns are present in the loaded CSV file
+columns <- colnames(data.df)
 if (!all(required_columns %in% str_to_lower(columns))){
   stop("The required columns are not present in the input file.", call.=FALSE)
 }
 
-# Extract all pasqi* columns
-
+# Extract all pasqi* columns, ie all columns that have 'psqi' in their name
 columns <- columns[str_detect(columns, "psqi")]
 
+############################################################
+#                                                          #
+#                      Clean the Data                      #
+#                                                          #
+############################################################
 
-# check if dates in columns:
+# Cell-by-cell basis using a nested-loop
 for (column in columns){
   for (row in 1:nrow(data.df)){
-    if (!is.na(data.df[row, column]) | data.df[row, column] != ""){
-      # Convert all text to lowercase in that cell
+    # Make sure the cell isn't NA, otherwise don't clean at all
+    if (!is.na(data.df[row, column])){
+      
+      # Convert all text to lowercase in that cell to reduce permutations for string detection
       rowData <- str_to_lower(data.df[row, column])
+      
       # Check if any digits present, if not, return NA
       if (!str_detect(rowData, "\\d")){
         data.df[row, column] <- NA
         next
       }
       
-      # Check if it is a time by detecting am or pm present
+      # Check if it is a time by detecting 'am' or 'pm' present
       if (str_detect(rowData, "am|pm|a.m|p.m")){
+        # Check if it is a time range, 7-8 am, and get the max of the range
         if (str_detect(rowData, "\\d{1,2}-\\d{1,2}")){
           rowData <- paste0(str_extract(rowData, "(?<=-)\\d{1,2}"), " ", ifelse(str_detect(rowData, "am|a.m"), "am", "pm"))
         }
-        # Parse the date-time into HH:MM format
+        
+        # Parse the date-time into HH:MM format, if it is in HH:MM or HH:MM:SS format already
         if (str_detect(rowData, "\\d{1,2}[:;.,\\s]\\d{1,2}")){
           temp <- str_extract(rowData, "\\d{1,2}[:;.,\\s]\\d{1,2}")
           temp <- unlist(strsplit(temp, "[:;.,\\s]"))
+          # Determine if AM or PM to be appended based on on-cleaned cell info
           if (str_detect(rowData, "am|a.m")){
             data.df[row, column] <- paste(paste(temp, collapse = ":"), "AM")
           } else {
             data.df[row, column] <- paste(paste(temp, collapse = ":"), "PM")
           }
-        } else {
+        } else { # Try to parse time if not in HH:MM or HH:MM:SS format
+          # Extract all the digits present
           temp <- unlist(str_extract_all(rowData, "\\d"))
-          
+          # Parse into HH:MM format based on number of digits in un-cleaned cell
           if (length(temp) == 3){
             data.df[row, column] <- paste0(temp[1], ":", temp[2], temp[3], " ", ifelse(str_detect(rowData, "am|a.m"), "AM", "PM"))
           } else if (length(temp) == 4){
@@ -72,6 +105,7 @@ for (column in columns){
         data.df[row, column] <- mean(as.numeric(temp))
         next
       }
+      
       # Extract the "day" and "month" from mm-dd-yyyy and assume it's a range and get middle
       if (str_detect(rowData, "/")){
         temp <- unlist(strsplit(rowData, "/"))
@@ -79,7 +113,7 @@ for (column in columns){
         next
       }
       
-      # Change 'midnight'
+      # Change 'midnight' to '12:00 AM'
       if (rowData == "midnight"){
         data.df[row, column] <- "12:00 AM"
         next
@@ -117,10 +151,12 @@ for (column in columns){
   }
 }
 
-# Check if at least half of the entries in the column are times, then parse it as a time component
+# Use column data to try and further parse anomolous data within that column
 for (column in columns){
+  ## Check if at least half of the entries in the column are times, then parse it as a time component
   if (sum(str_detect(data.df[[column]], "AM|PM"), na.rm = TRUE) > nrow(data.df) / 2){
     for (row in 1:nrow(data.df)){
+      # Parse a time from any non AM or PM entry in a column that is mostly AM/PM
       if (!is.na(data.df[row, column])){
         if (!str_detect(data.df[row, column], "\\d{1,2}:\\d{1,2}\\s\\D{2}")){
           temp <- unlist(str_extract_all(data.df[row, column], "\\d"))
@@ -137,8 +173,10 @@ for (column in columns){
         }
       }
     }
+    # Use `hms` to parse the column. This creates NA values for any other non time data points
     data.df[[column]] <- hms::parse_hm(data.df[[column]])
   } else {
+    # If not a time column, parse as numeric data instead
     data.df[[column]] <- as.numeric(data.df[[column]])
   }
 }
