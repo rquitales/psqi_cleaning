@@ -8,7 +8,7 @@ args <- as.list(commandArgs(trailingOnly = TRUE))
 
 # If argument list is empty, have stdin as the input and stdout as output
 if (length(args) == 0) {
-  args[[1]] <- stdin()
+  args[[1]] <- "stdin"
 }
 if (length(args) == 1) {
   args[[2]] <- stdout()
@@ -176,8 +176,6 @@ for (column in columns){
         }
       }
     }
-    # Use `hms` to parse the column. This creates NA values for any other non time data points
-    data.df[[column]] <- hms::parse_hm(data.df[[column]])
   } else {
     # If not a time column, parse as numeric data instead
     data.df[[column]] <- suppressWarnings(as.numeric(data.df[[column]]))
