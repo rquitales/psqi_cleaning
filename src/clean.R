@@ -20,8 +20,6 @@ if (length(args) == 1) {
 #                                                          #
 ############################################################
 library(stringr)
-library(hms)
-library(dplyr)
 
 ############################################################
 #                                                          #
@@ -119,7 +117,7 @@ orRange <- function(.input){
 
 # Just extract the digits
 extractDigits <- function(.input){
-  return(str_extract(.input, "\\d{1,4}"))
+  return(str_extract(.input, "\\d{1,4}\\.?\\d?"))
 }
 
 # Combine all cleaning functions into one call
@@ -219,7 +217,9 @@ cleanDataFrame <- function(.data, columnPrefix = "psqi"){
 #                      Use functions                       #
 #                                                          #
 ############################################################
-
+# Load data
 data.df <- loadData()
+# Clean data
 data.df <- cleanDataFrame(data.df)
+# Write data
 write.csv(data.df, args[[2]], row.names = FALSE)
