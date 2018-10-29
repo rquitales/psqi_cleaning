@@ -1,3 +1,5 @@
+# This is a script to score PSQI survey data based on cleaned results. This should be run using the shell command located at ../score_psqi. The readme for this is located at ../README.md
+
 ############################################################
 #                                                          #
 #                    Argument Handling                     #
@@ -58,6 +60,24 @@ sleepDuration <- function(psqi4){
   return(score)
 }
 
+# Score sleep latency
+sleepLatency <- function(psqi2, psqi5a){
+  ## Q2 subscore
+  q2_subscore <- ifelse(psqi2 <= 15, 0, 
+                        ifelse(psqi2 <= 30, 1,
+                               ifelse(psqi2 <= 60, 2, 3)))
+  
+  ## Q5a subscore - return NA if more than 3
+  q5a_subscore <- ifelse(psqi5a > 3, NA, psqi5a)
+  
+  ## Sum the subscores
+  sum_subscores <- q2_subscore + q5a_subscore
+  
+  # Final score
+  score <- ceiling(sum_subscores/2)
+  return(score)
+}
+
 # Score sleep effienciency using psqi1, psqi3 and psqi4
 sleepEfficiency <- function(psqi4, psqi1, psqi3){
   # Time parsing to find difference
@@ -86,6 +106,7 @@ sleepEfficiency <- function(psqi4, psqi1, psqi3){
 calculateScores <- function(.data){
   data.temp <- .data
   data.temp$score.sleep_duration <- sleepDuration(data.temp$psqi4.clean)
+  data.temp$score.sleep_latency <- sleepLatency(data.temp$psqi2.clean, data.temp$psqi5a.clean)
   data.temp$score.sleep_efficiency <- sleepEfficiency(data.temp$psqi4.clean, data.temp$psqi1.clean, data.temp$psqi3.clean)
   
   return(data.temp)
