@@ -1,0 +1,11 @@
+To run the ./clean_psqi and ./score_psqi shell scripts, the statistical programming language R is required.
+
+# REQUIREMENTS
+R
+
+## R Packages
+stringr
+hms
+
+These R packages can be installed within the R environment using the following command:
+install.packages(c("hms", "stringr"))
