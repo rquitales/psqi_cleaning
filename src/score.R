@@ -1,3 +1,5 @@
+# This is a script to score PSQI survey data based on cleaned results. This should be run using the shell command located at ../score_psqi. The readme for this is located at ../README.md
+
 ############################################################
 #                                                          #
 #                    Argument Handling                     #

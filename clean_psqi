@@ -1,3 +1,9 @@
 #!/bin/bash
 
+: ' This script cleans the PSQI survey data.
+ Run this script through calling it in a terminal:
+ ./clean_psqi [input csv file location] [output csv file location]
+ Files can also be piped, eg, cat [input csv file location] | ./clean_psqi > [output csv file location]
+ If the second argument is not specified, the Rscript outputs to stdout. If first argument is not given, the input is taken from stdin.
+ '
 Rscript ./src/clean.R $1 $2

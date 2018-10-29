@@ -1,3 +1,5 @@
+# This is a script to clean PSQI survey data. This should be run using the shell command located at ../clean_psqi. The readme for this is located at ../README.md
+
 ############################################################
 #                                                          #
 #                    Argument Handling                     #

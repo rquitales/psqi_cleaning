@@ -1,3 +1,10 @@
 #!/bin/bash
 
+: ' This script computes the PSQI component scores.
+ Run this script through calling it in a terminal:
+ ./score_psqi [input csv file location] [output csv file location]
+ Files can also be piped, eg, cat [input csv file location] | ./score_psqi > [output csv file location]
+ If the second argument is not specified, the Rscript outputs to stdout. If first argument is not given, the input is taken from stdin.
+ '
+
 Rscript ./src/score.R $1 $2
